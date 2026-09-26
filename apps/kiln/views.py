@@ -8,9 +8,19 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import OpenCookRunForm, PhaseChangeForm, ResinLotForm, SoftPointProbeForm
-from .models import CookRun, FireHearth, ResinLot
-from .services.floor_rules import change_hearth_phase
+from .forms import (
+    LaneGearLogForm,
+    OpenCookRunForm,
+    PhaseChangeForm,
+    ResinLotForm,
+    SoftPointProbeForm,
+)
+from .models import CookRun, FireHearth, LaneGearLog, ResinLot
+from .services.floor_rules import (
+    RAMPING_GEAR_MIN,
+    change_hearth_phase,
+    latest_lane_gear_log,
+)
 
 
 def _wants_htmx(request):
@@ -34,13 +44,21 @@ def _board_context():
     lanes = {}
     for h in hearths:
         lanes.setdefault(h.lane, []).append(h)
+    gear_by_lane = {}
+    for log in LaneGearLog.objects.order_by("lane", "-switchedAt", "-id"):
+        gear_by_lane.setdefault(log.lane, log)
+    lane_rows = []
+    for lane, tiles in sorted(lanes.items()):
+        log = gear_by_lane.get(lane)
+        gear_ok = log is not None and log.gear >= RAMPING_GEAR_MIN
+        lane_rows.append((lane, tiles, log, gear_ok))
     phase_legend = [
         (key, label, sum(1 for h in hearths if h.phase == key))
         for key, label in FireHearth.PHASE_CHOICES
     ]
     return {
         "hearths": hearths,
-        "lanes": sorted(lanes.items()),
+        "lanes": lane_rows,
         "phase_legend": phase_legend,
     }
 
@@ -54,6 +72,7 @@ def _drawer_context(hearth):
         "hearth": hearth,
         "open_run": open_run,
         "probes": probes,
+        "lane_gear_log": latest_lane_gear_log(hearth.lane),
         "phase_form": PhaseChangeForm(hearth=hearth),
         "probe_form": SoftPointProbeForm() if open_run else None,
         "open_run_form": OpenCookRunForm(hearth=hearth) if open_run is None else None,
@@ -96,6 +115,7 @@ def hearth_drawer(request, pk):
 def change_phase(request, pk):
     hearth = get_object_or_404(FireHearth, pk=pk)
     form = PhaseChangeForm(request.POST, hearth=hearth)
+    phase_error = None
     if form.is_valid():
         try:
             change_hearth_phase(hearth, form.cleaned_data["phase"])
@@ -104,14 +124,19 @@ def change_phase(request, pk):
             msg = (
                 exc.message_dict.get("phase") if hasattr(exc, "message_dict") else None
             )
-            messages.error(request, msg[0] if msg else str(exc))
+            phase_error = msg[0] if msg else str(exc)
     else:
         err = form.errors.get("phase")
-        messages.error(request, err[0] if err else "相位切换失败")
+        phase_error = err[0] if err else "相位切换失败"
+
+    if phase_error:
+        messages.error(request, phase_error)
 
     if _wants_htmx(request):
         hearth.refresh_from_db()
-        resp = render(request, "floor/_drawer.html", _drawer_context(hearth))
+        ctx = _drawer_context(hearth)
+        ctx["phase_error"] = phase_error
+        resp = render(request, "floor/_drawer.html", ctx)
         resp["HX-Trigger"] = "floor-refresh"
         return resp
     return redirect(f"/?hearth={pk}")
@@ -209,3 +234,21 @@ def resin_lot_feed(request):
 
     lots = ResinLot.objects.all()[:40]
     return render(request, "resin/feed.html", {"lots": lots, "form": form})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def lane_gear_log(request):
+    if request.method == "POST":
+        form = LaneGearLogForm(request.POST)
+        if form.is_valid():
+            log = form.save()
+            messages.success(
+                request, f"过道 {log.lane} 禁烟档志已记：{log.gear} 档"
+            )
+            return redirect("lane_gear_log")
+    else:
+        form = LaneGearLogForm(initial={"operatorName": request.user.username})
+
+    logs = LaneGearLog.objects.all()[:60]
+    return render(request, "gear/log.html", {"logs": logs, "form": form})

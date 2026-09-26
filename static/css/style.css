@@ -326,8 +326,24 @@ body {
   border: 1px dashed #3f342a;
   display: grid;
   place-items: center;
+  gap: 0.6rem;
   background: rgba(0, 0, 0, 0.25);
   padding: 0.5rem 0;
+}
+
+.lane-gear {
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  color: #7dd3a0;
+}
+
+.lane-gear.low {
+  color: #f87171;
+}
+
+.lane-gear.none {
+  color: var(--steel);
+  opacity: 0.75;
 }
 
 .tile-row {
@@ -466,6 +482,14 @@ body {
   margin: 0 0 0.55rem;
   font-size: 0.75rem;
   color: var(--steel);
+}
+
+.form-error {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  color: #f87171;
+  border-left: 3px solid #f87171;
+  padding-left: 0.5rem;
 }
 
 .kv {

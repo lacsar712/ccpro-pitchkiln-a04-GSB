@@ -54,13 +54,20 @@ python manage.py runserver 0.0.0.0:4710
 2. **FireHearth（灶台）**：`lane`、`tag`（唯一）、`resinGrade`、相位 `cold|charging|ramping|holding|drawing`
 3. **CookRun（熬制值守）**：归属灶台与来脂批、`openedAt`、`closedAt`（可空）、`targetSoftPointC`
 4. **SoftPointProbe（软化点探针）**：归属值守、`sampledAt`、`softPointC`、`samplerName`
+5. **LaneGearLog（过道禁烟档志）**：`lane`、`switchedAt`、`gear`（整数 1–5）、`operatorName`、`note`（可空）；同一过道同一分钟只留一条（按分钟截断 + `(lane, switchedAt)` 唯一约束）
 
-**业务规则**：将灶台相位切到 `drawing`（出胶）时，进行中的 CookRun 必须至少有一条 SoftPointProbe 的 `softPointC ≤ 95`。逻辑在 `apps/kiln/services/floor_rules.py`，由相位切换入口调用。
+**业务规则**：
+
+- **升温门槛**：灶台由 `charging`（装料）切入 `ramping`（升温）时，核对该过道最新一条 LaneGearLog——`gear ≥ 3` 且 `switchedAt` 不早于当前值守的 `openedAt`，否则在抽屉中以中文拦下。冷灶与其它相位切换不受此约束。
+- **出胶门槛**：将灶台相位切到 `drawing`（出胶）时，进行中的 CookRun 必须至少有一条 SoftPointProbe 的 `softPointC ≤ 95`。
+
+逻辑在 `apps/kiln/services/floor_rules.py`，由相位切换入口调用。
 
 ## 界面
 
-- 首页：**灶台值守看板** — 左侧班次条 + 按过道排布的灶台瓦片；点瓦片打开右侧抽屉（值守、探针时间线、改相位 / 登记探针 / 开灶）
+- 首页：**灶台值守看板** — 左侧班次条 + 按过道排布的灶台瓦片，过道分组标题显示该过道当前禁烟档位；点瓦片打开右侧抽屉（值守、探针时间线、改相位 / 登记探针 / 开灶）
 - 次页：**来脂批** — 卡片时间线，非宽表 CRUD
+- 次页：**过道禁烟**（班次条「禁」入口）— 记档 + 档志时间线
 
 ## 种子数据
 
@@ -68,7 +75,7 @@ python manage.py runserver 0.0.0.0:4710
 python manage.py seed_data
 ```
 
-幂等：已有灶台则只保证账号存在。样例地名仅用「松脂坳 / 桐油坑」系。
+幂等：已有灶台则只保证账号存在。样例地名仅用「松脂坳 / 桐油坑」系。另种子一条过道禁烟档志：3 号过道 2 档（低档），用于演示装料 → 升温被门槛拦下。
 
 ## 目录结构
 

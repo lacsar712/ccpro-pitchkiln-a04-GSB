@@ -3,9 +3,17 @@
      hx-get="{% url 'floor_grid' %}"
      hx-trigger="floor-refresh from:body"
      hx-swap="outerHTML">
-  {% for lane, tiles in lanes %}
+  {% for lane, tiles, gear_log, gear_ok in lanes %}
   <div class="lane-row">
-    <div class="lane-label">过道 {{ lane }}</div>
+    <div class="lane-label">
+      <span class="lane-no">过道 {{ lane }}</span>
+      {% if gear_log %}
+      <span class="lane-gear{% if not gear_ok %} low{% endif %}"
+            title="最新档志 {{ gear_log.switchedAt|date:"m-d H:i" }} · {{ gear_log.operatorName }}">禁烟 {{ gear_log.gear }} 档</span>
+      {% else %}
+      <span class="lane-gear none">禁烟无志</span>
+      {% endif %}
+    </div>
     <div class="tile-row">
       {% for h in tiles %}
       {% with open=h.open_runs_cache.0 %}

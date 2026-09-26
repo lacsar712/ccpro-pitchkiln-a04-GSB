@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import CookRun, FireHearth, ResinLot, SoftPointProbe
+from .models import CookRun, FireHearth, LaneGearLog, ResinLot, SoftPointProbe
 
 
 def ensure_seed_data():
@@ -131,4 +131,13 @@ def ensure_seed_data():
         openedAt=now - timezone.timedelta(minutes=40),
         closedAt=None,
         targetSoftPointC=Decimal("87.00"),
+    )
+
+    # 过道禁烟档志：种子一过道低档（3 号过道 2 档），演示装料 → 升温被门槛拦下
+    LaneGearLog.objects.create(
+        lane=3,
+        switchedAt=now - timezone.timedelta(minutes=20),
+        gear=2,
+        operatorName="值守阿坤",
+        note="夜班道口烟感未复位，先压低档",
     )
