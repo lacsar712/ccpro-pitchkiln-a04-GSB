@@ -3,9 +3,16 @@
      hx-get="{% url 'floor_grid' %}"
      hx-trigger="floor-refresh from:body"
      hx-swap="outerHTML">
-  {% for lane, tiles in lanes %}
+  {% for lane, tiles, gear in lanes %}
   <div class="lane-row">
-    <div class="lane-label">过道 {{ lane }}</div>
+    <div class="lane-label">
+      <span>过道 {{ lane }}</span>
+      {% if gear %}
+      <span class="lane-gear {% if gear.gear < 3 %}low{% endif %}">禁烟 {{ gear.gear }} 档</span>
+      {% else %}
+      <span class="lane-gear none">禁烟无志</span>
+      {% endif %}
+    </div>
     <div class="tile-row">
       {% for h in tiles %}
       {% with open=h.open_runs_cache.0 %}

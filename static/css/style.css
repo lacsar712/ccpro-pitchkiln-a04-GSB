@@ -326,8 +326,77 @@ body {
   border: 1px dashed #3f342a;
   display: grid;
   place-items: center;
+  gap: 0.4rem;
   background: rgba(0, 0, 0, 0.25);
   padding: 0.5rem 0;
+}
+
+.lane-gear {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--cinder);
+}
+
+.lane-gear.low {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.lane-gear.none {
+  color: var(--steel);
+  opacity: 0.7;
+}
+
+/* —— shift strip: 过道禁烟档位 —— */
+.strip-gears {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.strip-gear {
+  font-family: "IBM Plex Mono", "Cascadia Mono", "Consolas", monospace;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid #3a3028;
+  background: var(--ash);
+  color: var(--cinder);
+  white-space: nowrap;
+}
+
+.strip-gear.low {
+  border-color: var(--danger);
+  color: #f87171;
+}
+
+.strip-gear.none {
+  color: var(--steel);
+}
+
+/* —— drawer: 档志 —— */
+.gear-chip {
+  font-weight: 700;
+  padding: 0.08rem 0.4rem;
+  border: 1px solid currentColor;
+  color: var(--ok);
+}
+
+.gear-chip.low { color: var(--danger); }
+
+.gear-warn {
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--danger);
+}
+
+.phase-error {
+  margin: 0 0 0.55rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+  color: #f87171;
+  border-left: 3px solid var(--danger);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .tile-row {

@@ -71,8 +71,39 @@
   {% endif %}
 
   <section class="drawer-block">
+    <h3>过道禁烟档志</h3>
+    {% if lane_gear %}
+    <dl class="kv">
+      <dt>当前档位</dt>
+      <dd>
+        <span class="gear-chip {% if lane_gear.gear < 3 %}low{% endif %}">{{ lane_gear.gear }} 档</span>
+        {% if lane_gear.gear < 3 %}<span class="gear-warn">低于升温门槛 3 档</span>{% endif %}
+      </dd>
+      <dt>切换时刻</dt><dd class="mono">{{ lane_gear.switchedAt|date:"Y-m-d H:i" }}</dd>
+      <dt>操作人</dt><dd>{{ lane_gear.operatorName }}</dd>
+      {% if lane_gear.note %}<dt>备注</dt><dd>{{ lane_gear.note }}</dd>{% endif %}
+    </dl>
+    {% else %}
+    <p class="hint">过道 {{ hearth.lane }} 尚无档志 — 装料进升温前须先登记。</p>
+    {% endif %}
+    <form method="post" action="{% url 'add_lane_gear_log' hearth.pk %}"
+          class="stack-form"
+          hx-post="{% url 'add_lane_gear_log' hearth.pk %}"
+          hx-target="#hearth-drawer"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      {{ gear_form.as_p }}
+      <button type="submit" class="btn-ember">登记档志</button>
+    </form>
+    <p class="hint">同一过道同一分钟只留一条，重复登记覆盖旧志。</p>
+  </section>
+
+  <section class="drawer-block">
     <h3>切换相位</h3>
-    <p class="hint">进入「出胶」须当前值守至少一条探针 ≤95℃。</p>
+    <p class="hint">「装料 → 升温」须过道最新禁烟档志 ≥3 档且不早于本值守开灶时刻；进入「出胶」须当前值守至少一条探针 ≤95℃。</p>
+    {% if phase_error %}
+    <p class="phase-error">{{ phase_error }}</p>
+    {% endif %}
     <form method="post" action="{% url 'change_phase' hearth.pk %}"
           class="stack-form"
           hx-post="{% url 'change_phase' hearth.pk %}"

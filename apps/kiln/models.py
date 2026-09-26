@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -107,3 +108,38 @@ class SoftPointProbe(models.Model):
 
     def __str__(self):
         return f"{self.softPointC}℃ by {self.samplerName}"
+
+
+class LaneGearLog(models.Model):
+    """过道禁烟档志：同一过道同一分钟只留一条。"""
+
+    GEAR_MIN = 1
+    GEAR_MAX = 5
+
+    lane = models.PositiveIntegerField("过道号")
+    switchedAt = models.DateTimeField("切换时刻")
+    gear = models.PositiveSmallIntegerField(
+        "档位",
+        validators=[MinValueValidator(GEAR_MIN), MaxValueValidator(GEAR_MAX)],
+    )
+    operatorName = models.CharField("操作人", max_length=80)
+    note = models.CharField("备注", max_length=200, blank=True, default="")
+
+    class Meta:
+        ordering = ["-switchedAt", "-id"]
+        verbose_name = "过道禁烟档志"
+        verbose_name_plural = "过道禁烟档志"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lane", "switchedAt"], name="uniq_lane_gear_minute"
+            )
+        ]
+
+    def __str__(self):
+        return f"过道{self.lane} · {self.gear}档 @ {self.switchedAt:%Y-%m-%d %H:%M}"
+
+    def save(self, *args, **kwargs):
+        # 切换时刻按分钟落库，配合 (lane, switchedAt) 唯一约束保证同分钟只留一条
+        if self.switchedAt is not None:
+            self.switchedAt = self.switchedAt.replace(second=0, microsecond=0)
+        super().save(*args, **kwargs)

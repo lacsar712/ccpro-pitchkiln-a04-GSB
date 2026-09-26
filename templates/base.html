@@ -16,6 +16,14 @@
       <a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}on{% endif %}" title="值守看板">灶</a>
       <a href="{% url 'resin_lot_feed' %}" class="{% if request.resolver_match.url_name == 'resin_lot_feed' %}on{% endif %}" title="来脂批">脂</a>
     </nav>
+    <div class="strip-gears">
+      {% for g in strip_lane_gears %}
+      <span class="strip-gear {% if g.gear < 3 %}low{% endif %}"
+            title="过道 {{ g.lane }} · 禁烟 {{ g.gear }} 档 · {{ g.switchedAt|date:'m-d H:i' }} · {{ g.operatorName }}">{{ g.lane }}·{{ g.gear }}</span>
+      {% empty %}
+      <span class="strip-gear none" title="尚无过道禁烟档志">禁—</span>
+      {% endfor %}
+    </div>
     <div class="strip-foot">
       <span class="who">{{ user.username }}</span>
       <form method="post" action="{% url 'logout' %}">

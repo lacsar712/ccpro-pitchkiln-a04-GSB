@@ -1,8 +1,13 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import CookRun, FireHearth, ResinLot, SoftPointProbe
-from .services.floor_rules import assert_can_enter_drawing
+from .models import CookRun, FireHearth, LaneGearLog, ResinLot, SoftPointProbe
+from .services.floor_rules import (
+    RAMPING_GEAR_MIN,
+    assert_can_enter_drawing,
+    assert_can_enter_ramping,
+)
 
 
 class ResinLotForm(forms.ModelForm):
@@ -46,8 +51,18 @@ class PhaseChangeForm(forms.Form):
 
     def clean_phase(self):
         phase = self.cleaned_data["phase"]
-        if self.hearth is not None and phase == FireHearth.PHASE_DRAWING:
-            assert_can_enter_drawing(self.hearth)
+        if self.hearth is not None:
+            try:
+                if phase == FireHearth.PHASE_DRAWING:
+                    assert_can_enter_drawing(self.hearth)
+                elif (
+                    phase == FireHearth.PHASE_RAMPING
+                    and self.hearth.phase == FireHearth.PHASE_CHARGING
+                ):
+                    assert_can_enter_ramping(self.hearth)
+            except ValidationError as exc:
+                # 服务层抛的是 {"phase": [...]} 字典，字段级 clean 须摊平再抛
+                raise ValidationError(exc.messages)
         return phase
 
 
@@ -107,3 +122,41 @@ class OpenCookRunForm(forms.ModelForm):
         if self.hearth is not None and self.hearth.open_run() is not None:
             raise forms.ValidationError("该灶已有进行中的值守，请先收灶再开新灶。")
         return cleaned
+
+
+class LaneGearLogForm(forms.ModelForm):
+    class Meta:
+        model = LaneGearLog
+        fields = ["switchedAt", "gear", "operatorName", "note"]
+        widgets = {
+            "switchedAt": forms.DateTimeInput(
+                attrs={"class": "field", "type": "datetime-local"},
+                format="%Y-%m-%dT%H:%M",
+            ),
+            "gear": forms.Select(
+                choices=[
+                    (g, f"{g} 档")
+                    for g in range(LaneGearLog.GEAR_MIN, LaneGearLog.GEAR_MAX + 1)
+                ],
+                attrs={"class": "field"},
+            ),
+            "operatorName": forms.TextInput(attrs={"class": "field"}),
+            "note": forms.TextInput(
+                attrs={"class": "field", "placeholder": "可空"}
+            ),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["switchedAt"].input_formats = [
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+        ]
+        if not self.is_bound:
+            self.initial["switchedAt"] = timezone.localtime().strftime(
+                "%Y-%m-%dT%H:%M"
+            )
+            self.initial["gear"] = RAMPING_GEAR_MIN
+            if user is not None and user.is_authenticated:
+                self.initial["operatorName"] = user.username
